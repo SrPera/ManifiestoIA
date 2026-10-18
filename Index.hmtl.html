@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Manifiesto IA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap');
+
+    :root {
+      --bg-dark: #03070a;
+      --term-bg: #081017;
+      --panel-bg: #0e1924;
+      --cyan: #00f2fe;
+      --red: #ff2a2a;
+      --green: #39ff14;
+      --yellow: #ffd700;
+      --text: #c0d6e4;
+      --text-muted: #64748b;
+      --scanline: rgba(0, 242, 254, 0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+      background-image: 
+        linear-gradient(0deg, transparent 24%, var(--scanline) 25%, var(--scanline) 26%, transparent 27%, transparent 74%, var(--scanline) 75%, var(--scanline) 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, var(--scanline) 25%, var(--scanline) 26%, transparent 27%, transparent 74%, var(--scanline) 75%, var(--scanline) 76%, transparent 77%, transparent);
+      background-size: 40px 40px;
+    }
+
+    body::after {
+      content: " ";
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
+      z-index: 100;
+      background-size: 100% 2px, 3px 100%;
+      pointer-events: none;
+    }
+
+    #app {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 900px;
+      background: var(--term-bg);
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.2), inset 0 0 15px rgba(0, 242, 254, 0.1);
+      border-radius: 6px;
+      padding: 28px;
+      min-height: 88vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1, h2, h3, h4 { font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+    h1 { color: var(--cyan); font-size: 2.2rem; text-shadow: 0 0 10px var(--cyan); margin-bottom: 8px; }
+    h2 { color: var(--yellow); font-size: 1.4rem; margin-bottom: 16px; border-bottom: 1px dashed var(--yellow); padding-bottom: 6px;}
+    h3 { color: var(--cyan); font-size: 1.1rem; margin-bottom: 8px; }
+    p { margin-bottom: 14px; line-height: 1.6; font-size: 1.05rem; }
+
+    .status-header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255, 42, 42, 0.08); border: 1px solid var(--red);
+      padding: 12px 16px; color: var(--red); font-weight: bold;
+      margin-bottom: 24px; font-size: 0.95rem;
+    }
+    .status-header.unlocked { background: rgba(57, 255, 20, 0.08); border-color: var(--green); color: var(--green); }
+
+    .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .hub-card {
+      background: var(--panel-bg); border: 1px solid var(--cyan); padding: 20px;
+      border-radius: 4px; cursor: pointer; transition: all 0.25s ease; position: relative;
+    }
+    .hub-card:hover { background: rgba(0, 242, 254, 0.1); box-shadow: 0 0 15px rgba(0, 242, 254, 0.3); transform: translateY(-2px); }
+    .hub-card.completed { border-color: var(--green); background: rgba(57, 255, 20, 0.05); }
+    .hub-card.completed::after {
+      content: "✓ COMPLETADO"; position: absolute; top: 10px; right: 10px;
+      font-size: 0.75rem; color: var(--green); font-weight: bold;
+    }
+    .card-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+
+    .action-btn {
+      background: var(--cyan); color: var(--bg-dark); border: none; padding: 12px 20px;
+      font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; text-transform: uppercase; margin-top: 12px; margin-right: 8px; transition: all 0.2s;
+    }
+    .action-btn:hover:not(:disabled) { background: #fff; box-shadow: 0 0 12px var(--cyan); }
+    .action-btn.secondary { background: transparent; border: 1px solid var(--cyan); color: var(--cyan); }
+    .action-btn.secondary:hover:not(:disabled) { background: var(--cyan); color: var(--bg-dark); }
+    .action-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    /* Modales */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(3, 7, 10, 0.85); backdrop-filter: blur(4px);
+      z-index: 200; display: flex; justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-box {
+      background: var(--term-bg); border: 2px solid var(--red); box-shadow: 0 0 30px rgba(255, 42, 42, 0.4);
+      padding: 24px; max-width: 500px; width: 100%; border-radius: 4px; text-align: center;
+    }
+    .modal-box.success { border-color: var(--green); box-shadow: 0 0 30px rgba(57, 255, 20, 0.4); }
+
+    .case-detail-box { background: var(--panel-bg); border: 1px solid var(--text-muted); padding: 18px; border-radius: 4px; margin-bottom: 16px; transition: all 0.3s ease; }
+    .solved-box { border-color: var(--green) !important; background: rgba(57, 255, 20, 0.05) !important; box-shadow: 0 0 10px rgba(57, 255, 20, 0.1); }
+    .success-text { color: var(--green); font-weight: bold; margin-top: 10px; font-size: 1.1rem; }
+    .hidden { display: none !important; }
+
+    /* --- MÓDULO 1: CABLES ESTILO AMONG US --- */
+    .wire-board {
+      position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 20px;
+      padding: 20px 0; min-height: 400px;
+    }
+    #svg-cables { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+    .wire-col { display: flex; flex-direction: column; gap: 15px; justify-content: space-around; z-index: 10; }
+    .node-item {
+      position: relative; background: var(--panel-bg); border: 1px solid var(--text-muted);
+      padding: 12px 15px; border-radius: 4px; font-size: 0.9rem; display: flex; align-items: center;
+    }
+    .node-item.locked { border-color: var(--green); color: var(--green); background: rgba(57, 255, 20, 0.05); }
+    
+    .port {
+      width: 20px; height: 20px; border-radius: 50%; position: absolute; top: 50%; transform: translateY(-50%);
+      cursor: pointer; box-shadow: inset 0 0 5px rgba(0,0,0,0.8), 0 0 8px currentColor;
+    }
+    .port-left { right: -30px; }
+    .port-right { left: -30px; }
+
+    /* --- MÓDULO 3: DESENCRIPTACIÓN --- */
+    .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
+    .tab-btn { background: var(--panel-bg); border: 1px solid var(--text-muted); color: var(--text-muted); padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+    .tab-btn.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255, 215, 0, 0.1); }
+    .tab-btn.validated-tab { border-color: var(--green) !important; color: var(--green) !important; }
+    .encrypted-text { font-family: monospace; color: #ff5555; letter-spacing: 1px; line-height: 1.5; word-break: break-all; }
+    .decrypted-text { color: var(--text); }
+    
+    /* --- MÓDULO 4: IMÁGENES REALES --- */
+    .files-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 20px; }
+    .file-card {
+      background: var(--panel-bg); border: 1px solid var(--text-muted); border-radius: 6px;
+      overflow: hidden; cursor: pointer; position: relative; transition: all 0.2s;
+    }
+    .file-card:hover { border-color: var(--cyan); box-shadow: 0 0 15px rgba(0,242,254,0.3); transform: translateY(-3px); }
+    .file-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 2px solid var(--panel-bg); pointer-events: none; }
+    .file-info { padding: 15px; pointer-events: none; }
+    .stamped-mark {
+      position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg);
+      color: var(--cyan); border: 4px solid var(--cyan); padding: 8px 15px; font-family: 'Rajdhani', sans-serif;
+      font-weight: bold; font-size: 1.8rem; background: rgba(0,0,0,0.8); box-shadow: 0 0 15px var(--cyan);
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .file-card.has-stamp .stamped-mark { opacity: 1; }
+
+    /* BOTÓN DE SONIDO */
+    #sound-toggle {
+      position: fixed; right: 16px; bottom: 16px; z-index: 300; width: 46px; height: 46px; border-radius: 50%;
+      background: var(--panel-bg); border: 1px solid var(--cyan); color: var(--cyan); font-size: 1.25rem;
+      cursor: pointer; box-shadow: 0 0 12px rgba(0, 242, 254, 0.3); transition: all 0.2s;
+    }
+    #sound-toggle:hover { background: rgba(0, 242, 254, 0.15); box-shadow: 0 0 18px rgba(0, 242, 254, 0.5); }
+    #sound-toggle.muted { border-color: var(--red); color: var(--red); box-shadow: 0 0 12px rgba(255, 42, 42, 0.3); }
+
+    /* MÓDULO 5: FIRMA */
+    input[type="text"] {
+      background: #04090d; border: 1px solid var(--cyan); color: var(--cyan); padding: 12px;
+      font-family: 'Share Tech Mono', monospace; width: 100%; margin: 12px 0; font-size: 1rem;
+    }
+    input[type="text"]:focus { outline: none; box-shadow: 0 0 10px var(--cyan); }
+    .stamp-container { border: 2px dashed var(--yellow); background: rgba(255, 215, 0, 0.03); padding: 20px; text-align: center; margin: 20px 0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <!-- PANTALLA 1: INTRODUCCIÓN -->
+    <div id="view-intro">
+      <h1>[ SISTEMA BLOQUEADO ]</h1>
+      <p><b>Ubicación:</b> Laboratorio de Comunicación y Cibercultura, Javeriana Cali.<br><b>Año:</b> 2026.</p>
+      <p>Un protocolo automatizado fuera de control ha sellado las salidas. Para desbloquear el laboratorio debes superar los 4 módulos de seguridad cibercultural y certificar el Manifiesto ético.</p>
+      <button class="action-btn" onclick="startLab()">Acceder al Sistema Principal</button>
+    </div>
+
+    <!-- PANTALLA 2: HUB PRINCIPAL -->
+    <div id="view-hub" class="hidden">
+      <h1>Manifiesto IA</h1>
+      <div class="status-header" id="status-bar">
+        <span>ESTADO: BLOQUEO DE SEGURIDAD ACTIVO</span>
+        <span id="modules-progress">Módulos completados: 0/4</span>
+      </div>
+
+      <div class="hub-grid">
+        <div class="hub-card" id="card-m1" onclick="openModule('m1')">
+          <span class="card-icon">🔌</span>
+          <h3>Módulo 01</h3>
+          <p>Cableado de Casos Forenses</p>
+        </div>
+        <div class="hub-card" id="card-m2" onclick="openModule('m2')">
+          <span class="card-icon">🤖</span>
+          <h3>Módulo 02</h3>
+          <p>Calibración de Inteligencias</p>
+        </div>
+        <div class="hub-card" id="card-m3" onclick="openModule('m3')">
+          <span class="card-icon">💻</span>
+          <h3>Módulo 03</h3>
+          <p>Desencriptación de Teoría</p>
+        </div>
+        <div class="hub-card" id="card-m4" onclick="openModule('m4')">
+          <span class="card-icon">🔎</span>
+          <h3>Módulo 04</h3>
+          <p>Auditoría de Archivos Visuales</p>
+        </div>
+      </div>
+
+      <div id="escape-panel" class="hidden" style="margin-top: 10px;">
+        <button class="action-btn" style="width: 100%; background: var(--green); color: #000;" onclick="openModule('m5')">
+          🔓 ABRIR PUERTAS Y GENERAR MANIFIESTO FINAL
+        </button>
+      </div>
+    </div>
+
+    <!-- PANTALLA 3: MÓDULOS -->
+    <div id="view-module" class="hidden">
+      <h2 id="module-title">Módulo</h2>
+      <div id="module-body"></div>
+      <button class="action-btn secondary" style="margin-top:20px;" onclick="returnToHub()">← Volver al Menú Principal</button>
+    </div>
+  </div>
+
+  <!-- MODAL INMERSIVO -->
+  <div id="custom-modal" class="modal-overlay hidden">
+    <div class="modal-box" id="modal-box">
+      <h2 id="modal-title" style="color: var(--red); border:none;">ALERTA DEL SISTEMA</h2>
+      <p id="modal-msg">Mensaje de error...</p>
+      <button class="action-btn" id="modal-btn" onclick="closeModal()">Continuar</button>
+    </div>
+  </div>
+
+  <button id="sound-toggle" onclick="Sound.toggle()" title="Activar / silenciar sonido" aria-label="Activar o silenciar sonido">🔊</button>
+
+  <script>
+    // ESTADO GLOBAL
+    const state = {
+      m1Completed: false, m2Completed: false, m3Completed: false, m4Completed: false,
+      m1WiresConnected: 0, puzzlesSolved: [false, false, false],
+      selectedTeoriaTab: 0, theoriesValidated: [false, false, false, false],
+      m4FilesStamped: { f1: false, f2: false, f3: false }
+    };
+
+    // DATOS M1 (Cables)
+    const M1_CASES = [
+      { id: 'c1', text: "Robocall con voz de Biden", color: "#ff0055", match: "p1" },
+      { id: 'c2', text: "IA redacta notas en la red X", color: "#00f2fe", match: "p2" },
+      { id: 'c3', text: "Video de alcaldesa sin etiqueta", color: "#ffd700", match: "p3" },
+      { id: 'c4', text: "Huelga Guionistas Hollywood", color: "#39ff14", match: "p4" }
+    ];
+    const M1_PRIN = [
+      { id: 'p4', text: "Autoría Responsable (Derechos)" },
+      { id: 'p2', text: "Human-in-the-Loop (Decisión)" },
+      { id: 'p1', text: "Verificar antes de viralizar" },
+      { id: 'p3', text: "Transparencia (#HechoConIA)" }
+    ];
+
+    // DATOS M3 (Teoría y Desencriptación)
+    const THEORIES = [
+      { 
+        title: "Cluetrain", 
+        text: "Las conversaciones son la red. Defendemos la voz humana frente a la voz sintética no etiquetada.",
+        q: "¿Cuál fue la tesis principal del manifiesto Cluetrain en 1999?",
+        options: [{t: "Los mercados son algoritmos ciegos", c: false}, {t: "Los mercados son conversaciones", c: true}]
+      },
+      { 
+        title: "Pierre Lévy", 
+        text: "La inteligencia colectiva demuestra que nadie lo sabe todo; todo el mundo sabe algo. La IA debe potenciar la red.",
+        q: "¿Qué concepto defiende Pierre Lévy sobre el saber humano?",
+        options: [{t: "La inteligencia se teje en colectivo", c: true}, {t: "Las máquinas deben pensar por nosotros", c: false}]
+      },
+      { 
+        title: "S. Híbridos", 
+        text: "La Inteligencia Híbrida ocurre cuando la máquina procesa datos a escala, pero un humano supervisa y asume la ética.",
+        q: "¿De quién es la responsabilidad final en un Sistema Híbrido?",
+        options: [{t: "De la empresa que programó la IA", c: false}, {t: "De la persona que supervisa y publica", c: true}]
+      },
+      { 
+        title: "Cibercultura", 
+        text: "Un manifiesto en cibercultura exige que la crítica se vuelva acción. No basta con teoría, hay que crear herramientas.",
+        q: "¿Qué exige Paz Sastre al crear un manifiesto digital?",
+        options: [{t: "Que pase de la teoría a la acción aplicable", c: true}, {t: "Que sea un documento impreso", c: false}]
+      }
+    ];
+
+    // DATOS M4 (Imágenes con nombres limpios y descripciones visibles desde el inicio)
+    // Wikimedia Commons: se pide por nombre de archivo (redirige a la imagen real y es más estable que un enlace directo)
+    const commons = (file) => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(file) + '?width=600';
+
+    // Cada archivo tiene varias fuentes ("srcs"): si una falla, se prueba la siguiente.
+    // Si ninguna carga, se muestra una tarjeta de reemplazo con el título (el juego nunca se rompe).
+    // Para usar tus propias imágenes, pon su ruta de primera en "srcs", por ejemplo: 'img/protesta-cali.jpg'
+    const M4_FILES = [
+      {
+        id: 'f1',
+        isAi: false,
+        srcs: [ commons('Monumento a la Resistencia, Cali.jpg') ],
+        // Si el archivo falla, se busca la imagen del artículo de Wikipedia en tiempo real
+        wiki: [
+          { lang: 'es', query: 'Monumento a la Resistencia Cali', must: 'Resistencia' },
+          { lang: 'en', query: 'Monument to the Resistance Cali', must: 'Resist' }
+        ],
+        name: 'Monumento a la Resistencia · Cali',
+        desc: 'Fotografía real del monumento de Puerto Resistencia, en Cali, símbolo del Paro Nacional de 2021. Luz natural, perspectiva y detalles coherentes con una cámara.'
+      },
+      {
+        id: 'f2',
+        isAi: true,
+        srcs: [
+          commons('Pope Francis in puffy winter jacket.png'),
+          commons('Pope Francis in puffy winter jacket.jpg')
+        ],
+        name: 'El Papa con abrigo blanco',
+        desc: 'Imagen generada con Midjourney (2023) que se volvió viral como si fuera real. Delatan la cruz deformada y las manos mal formadas.'
+      },
+      {
+        id: 'f3',
+        isAi: true,
+        srcs: [
+          commons("Théâtre D’opéra Spatial.png"),
+          commons("Théâtre D’opéra Spatial.jpg"),
+          commons("Théâtre D'opéra Spatial.jpg")
+        ],
+        wiki: [
+          { lang: 'en', query: "Théâtre D'opéra Spatial", must: 'Spatial' },
+          { lang: 'es', query: "Théâtre D'opéra Spatial", must: 'Spatial' }
+        ],
+        name: 'Théâtre D\'opéra Spatial',
+        desc: 'Obra creada con Midjourney (2022) que ganó un concurso de arte en Colorado. Textura pictórica uniforme y detalles que se vuelven borrosos al ampliar.'
+      }
+    ];
+
+    // Si una imagen falla, prueba la siguiente fuente; al agotarlas, muestra una tarjeta de reemplazo
+    function imgOk(el) {
+      const f = M4_FILES.find(x => x.id === el.dataset.file);
+      if (f && !el.src.startsWith('data:')) f.resolved = el.src; // recordar la que sí cargó
+    }
+
+    // Busca en Wikipedia la imagen principal del artículo (no depende de nombres de archivo)
+    async function resolveWiki(el, f, i = 0) {
+      if (!f.wiki || i >= f.wiki.length) { showPlaceholder(el, f); return; }
+      const w = f.wiki[i];
+      try {
+        const url = `https://${w.lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(w.query)}&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=600&format=json&origin=*`;
+        const data = await (await fetch(url)).json();
+        const pages = Object.values((data.query || {}).pages || {}).sort((a, b) => a.index - b.index);
+        const hit = pages.find(p => p.thumbnail && new RegExp(w.must, 'i').test(p.title));
+        if (hit) { el.src = hit.thumbnail.source; return; }
+      } catch (e) { /* pasa a la siguiente búsqueda */ }
+      resolveWiki(el, f, i + 1);
+    }
+
+    function imgError(el) {
+      const f = M4_FILES.find(x => x.id === el.dataset.file);
+      if (el.dataset.stage === 'wiki') { showPlaceholder(el, f); return; }
+      const next = (parseInt(el.dataset.idx, 10) || 0) + 1;
+      if (f && next < f.srcs.length) {
+        el.dataset.idx = next;
+        el.src = f.srcs[next];
+        return;
+      }
+      if (f && f.wiki) { el.dataset.stage = 'wiki'; resolveWiki(el, f); return; }
+      showPlaceholder(el, f);
+    }
+
+    function showPlaceholder(el, f) {
+      el.onerror = null;
+      const label = (f ? f.name : 'Archivo').replace(/&/g, 'y').replace(/</g, '');
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360"><rect width="600" height="360" fill="#0e1924"/><rect x="12" y="12" width="576" height="336" fill="none" stroke="#00f2fe" stroke-dasharray="8 6"/><text x="300" y="165" fill="#00f2fe" font-family="monospace" font-size="22" text-anchor="middle">ARCHIVO INTERCEPTADO</text><text x="300" y="200" fill="#64748b" font-family="monospace" font-size="16" text-anchor="middle">${label}</text></svg>`;
+      el.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    /* ==== SONIDO: música cyberpunk de fondo + efectos (todo generado con Web Audio, sin archivos) ==== */
+    const Sound = (() => {
+      let ctx = null, master = null, musicBus = null, sfxBus = null, fx = null, noiseBuf = null;
+      let muted = false, playing = false, step = 0, nextTime = 0;
+      const BPM = 100, STEP = 60 / BPM / 4;                  // semicorchea
+      const CHORDS = [                                       // Am - F - C - G
+        { root: 55.00, notes: [220.00, 261.63, 329.63] },
+        { root: 43.65, notes: [174.61, 220.00, 261.63] },
+        { root: 65.41, notes: [261.63, 329.63, 392.00] },
+        { root: 49.00, notes: [196.00, 246.94, 293.66] }
+      ];
+      const ARP = [0, 2, 1, 2, 3, 2, 1, 2, 0, 2, 4, 2, 5, 4, 2, 1];
+      const BASS_STEPS = [0, 3, 6, 8, 11, 14];
+
+      function init() {
+        if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return true; }
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        ctx = new AC();
+        master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
+        musicBus = ctx.createGain(); musicBus.gain.value = 0.35; musicBus.connect(master);
+        sfxBus = ctx.createGain(); sfxBus.gain.value = 0.7; sfxBus.connect(master);
+        // eco para el arpegio
+        fx = ctx.createGain();
+        const delay = ctx.createDelay(1); delay.delayTime.value = STEP * 3;
+        const fb = ctx.createGain(); fb.gain.value = 0.38;
+        fx.connect(musicBus); fx.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(musicBus);
+        // ruido para hi-hats
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        return true;
+      }
+
+      function tone({ f, t, dur, type = 'sine', vol = 0.2, a = 0.005, cut = null, slideTo = null, dest }) {
+        const osc = ctx.createOscillator(); osc.type = type;
+        osc.frequency.setValueAtTime(f, t);
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + a);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        if (cut) {
+          const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cut;
+          osc.connect(lp); lp.connect(g);
+        } else osc.connect(g);
+        g.connect(dest || sfxBus);
+        osc.start(t); osc.stop(t + dur + 0.05);
+      }
+
+      function noise(t, dur, vol, hp, dest) {
+        const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+        const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(g); g.connect(dest || sfxBus);
+        src.start(t); src.stop(t + dur + 0.05);
+      }
+
+      function scheduleStep(s, t) {
+        const i = s % 16, chord = CHORDS[Math.floor(s / 16) % 4];
+        if (BASS_STEPS.includes(i)) tone({ f: chord.root, t, dur: STEP * 2.2, type: 'sawtooth', vol: 0.26, cut: 380, dest: musicBus });
+        const pool = [...chord.notes, ...chord.notes.map(n => n * 2)];
+        tone({ f: pool[ARP[i]], t, dur: STEP * 1.6, type: 'square', vol: 0.045, cut: 2200, dest: fx });
+        if (i === 0) chord.notes.forEach(n => tone({ f: n, t, dur: STEP * 16 + 0.4, type: 'sawtooth', vol: 0.035, a: 0.9, cut: 650, dest: musicBus }));
+        if (i % 4 === 0) tone({ f: 120, t, dur: 0.18, type: 'sine', vol: 0.5, slideTo: 40, dest: musicBus });
+        if (i % 2 === 1) noise(t, 0.04, 0.05, 7000, musicBus);
+      }
+
+      function scheduler() {
+        if (!ctx) return;
+        while (nextTime < ctx.currentTime + 0.35) { scheduleStep(step, nextTime); nextTime += STEP; step++; }
+      }
+
+      function start() {
+        if (!init() || playing) return;
+        playing = true; nextTime = ctx.currentTime + 0.1;
+        scheduler(); setInterval(scheduler, 80);
+      }
+
+      const SFX = {
+        click:  t => tone({ f: 880, t, dur: 0.05, type: 'square', vol: 0.08, cut: 3000, slideTo: 660 }),
+        grab:   t => tone({ f: 330, t, dur: 0.09, type: 'triangle', vol: 0.14, slideTo: 520 }),
+        tick:   t => tone({ f: 1100 + Math.random() * 500, t, dur: 0.03, type: 'square', vol: 0.045, cut: 4000 }),
+        stamp:  t => { tone({ f: 140, t, dur: 0.16, type: 'sine', vol: 0.4, slideTo: 60 }); noise(t, 0.07, 0.15, 1500); },
+        connect: t => { tone({ f: 500, t, dur: 0.18, type: 'sine', vol: 0.22, slideTo: 1400 }); tone({ f: 1400, t: t + 0.14, dur: 0.1, type: 'triangle', vol: 0.15 }); },
+        correct: t => [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => tone({ f, t: t + k * 0.07, dur: 0.28, type: 'triangle', vol: 0.22 })),
+        error:  t => { tone({ f: 180, t, dur: 0.35, type: 'sawtooth', vol: 0.25, slideTo: 70, cut: 900 }); tone({ f: 150, t: t + 0.08, dur: 0.3, type: 'square', vol: 0.14, slideTo: 60, cut: 700 }); },
+        complete: t => {
+          [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, k) => tone({ f, t: t + k * 0.09, dur: 0.3, type: 'square', vol: 0.12, cut: 3500 }));
+          [523.25, 659.25, 783.99].forEach(f => tone({ f, t: t + 0.45, dur: 1.0, type: 'triangle', vol: 0.15 }));
+        },
+        finale: t => {
+          [392, 523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, k) => tone({ f, t: t + k * 0.11, dur: 0.35, type: 'square', vol: 0.12, cut: 3800 }));
+          [261.63, 392, 523.25, 659.25].forEach(f => tone({ f, t: t + 0.8, dur: 1.8, type: 'triangle', vol: 0.16 }));
+          noise(t + 0.8, 0.5, 0.08, 4000);
+        }
+      };
+
+      function play(name) {
+        if (!ctx || muted || !SFX[name]) return;
+        if (ctx.state === 'suspended') ctx.resume();
+        SFX[name](ctx.currentTime);
+      }
+
+      function toggle() {
+        init();
+        muted = !muted;
+        master.gain.setTargetAtTime(muted ? 0 : 0.9, ctx.currentTime, 0.05);
+        const b = document.getElementById('sound-toggle');
+        b.textContent = muted ? '🔇' : '🔊'; b.classList.toggle('muted', muted);
+        if (!muted) start();
+      }
+
+      // Pausar al cambiar de pestaña y retomar al volver
+      document.addEventListener('visibilitychange', () => {
+        if (!ctx) return;
+        if (document.hidden) ctx.suspend(); else ctx.resume();
+      });
+
+      return { start, play, toggle };
+    })();
+    const sfx = (name) => Sound.play(name);
+
+    // El navegador exige un primer clic para permitir audio: la música arranca con el primer toque
+    document.addEventListener('pointerdown', () => Sound.start(), { once: true });
+    // Sonido de clic en botones, tarjetas y pestañas
+    document.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.hub-card, .action-btn, .tab-btn')) sfx('click');
+    });
+
+    // UTILIDADES MODAL Y NAVEGACIÓN
+    function triggerModal(title, msg, isSuccess = false) {
+      const modal = document.getElementById('custom-modal');
+      const box = document.getElementById('modal-box');
+      document.getElementById('modal-title').innerText = title; document.getElementById('modal-msg').innerText = msg;
+      if(isSuccess){ box.classList.add('success'); document.getElementById('modal-title').style.color = 'var(--green)'; } 
+      else { box.classList.remove('success'); document.getElementById('modal-title').style.color = 'var(--red)'; }
+      modal.classList.remove('hidden');
+      if (isSuccess) setTimeout(() => sfx('complete'), 180); else sfx('error');
+    }
+    function closeModal() { document.getElementById('custom-modal').classList.add('hidden'); }
+    function startLab() { Sound.start(); showView('view-hub'); }
+    function showView(viewId) {
+      document.querySelectorAll('#app > div').forEach(div => { if(div.id !== 'custom-modal') div.classList.add('hidden'); });
+      document.getElementById(viewId).classList.remove('hidden');
+    }
+    function returnToHub() { showView('view-hub'); updateProgress(); }
+
+    function updateProgress() {
+      let count = 0;
+      if (state.m1Completed) { count++; document.getElementById('card-m1').classList.add('completed'); }
+      if (state.m2Completed) { count++; document.getElementById('card-m2').classList.add('completed'); }
+      if (state.m3Completed) { count++; document.getElementById('card-m3').classList.add('completed'); }
+      if (state.m4Completed) { count++; document.getElementById('card-m4').classList.add('completed'); }
+
+      document.getElementById('modules-progress').innerText = `Módulos completados: ${count}/4`;
+      if (count === 4) {
+        document.getElementById('status-bar').classList.add('unlocked');
+        document.querySelector('#status-bar span').innerText = "ESTADO: PUERTAS LISTAS PARA DESBLOQUEO";
+        document.getElementById('escape-panel').classList.remove('hidden');
+      }
+    }
+
+    function openModule(mKey) {
+      const mTitle = document.getElementById('module-title'); const mBody = document.getElementById('module-body');
+      showView('view-module');
+      if (mKey === 'm1') { mTitle.innerText = "Módulo 01: Cableado Forense"; renderM1(mBody); }
+      else if (mKey === 'm2') { mTitle.innerText = "Módulo 02: Calibración Inteligencias"; renderM2(mBody); }
+      else if (mKey === 'm3') { mTitle.innerText = "Módulo 03: Desencriptación Hacker"; renderM3(mBody); }
+      else if (mKey === 'm4') { mTitle.innerText = "Módulo 04: Auditoría Visual #HechoConIA"; renderM4(mBody); }
+      else if (mKey === 'm5') { mTitle.innerText = "Protocolo de Escape Final"; renderM5(mBody); }
+    }
+
+    /* ==== MÓDULO 01: CABLES (AMONG US STYLE) ==== */
+    let wireState = { drawing: false, line: null, startPort: null, svg: null };
+
+    function renderM1(container) {
+      if(state.m1Completed) {
+        container.innerHTML = `<div class="case-detail-box solved-box"><h3 class="success-text">✓ CABLES CALIBRADOS</h3><p>El flujo de datos éticos ha sido restaurado.</p></div>`;
+        return;
+      }
+      container.innerHTML = `
+        <p>Arrastra un cable desde el <b>Caso</b> (Izquierda) hasta su <b>Principio Ético</b> (Derecha):</p>
+        <div class="wire-board" id="wire-container">
+          <svg id="svg-cables"></svg>
+          <div class="wire-col">
+            ${M1_CASES.map(c => `
+              <div class="node-item" id="node-${c.id}">
+                ${c.text}
+                <div class="port port-left" data-id="${c.id}" data-match="${c.match}" style="background-color:${c.color};" onmousedown="startWire(event, this)" ontouchstart="startWire(event, this)"></div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="wire-col" style="align-items: flex-end; text-align:right;">
+            ${M1_PRIN.map(p => `
+              <div class="node-item" id="node-${p.id}" style="justify-content: flex-end;">
+                <div class="port port-right" data-id="${p.id}" style="background-color:#555;"></div>
+                ${p.text}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      wireState.svg = document.getElementById('svg-cables');
+      
+      document.addEventListener('mousemove', drawWire);
+      document.addEventListener('touchmove', drawWire, {passive: false});
+      document.addEventListener('mouseup', dropWire);
+      document.addEventListener('touchend', dropWire);
+    }
+
+    function getRelativeCoords(e, container) {
+      const rect = container.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function startWire(e, portEl) {
+      if(portEl.classList.contains('connected')) return;
+      wireState.drawing = true;
+      sfx('grab');
+      wireState.startPort = portEl;
+      
+      const pos = getRelativeCoords(e, wireState.svg);
+      wireState.line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      wireState.line.setAttribute('x1', pos.x); wireState.line.setAttribute('y1', pos.y);
+      wireState.line.setAttribute('x2', pos.x); wireState.line.setAttribute('y2', pos.y);
+      wireState.line.setAttribute('stroke', portEl.style.backgroundColor);
+      wireState.line.setAttribute('stroke-width', '6');
+      wireState.line.setAttribute('stroke-linecap', 'round');
+      wireState.svg.appendChild(wireState.line);
+    }
+
+    function drawWire(e) {
+      if(!wireState.drawing || !wireState.line) return;
+      e.preventDefault(); 
+      const pos = getRelativeCoords(e, wireState.svg);
+      wireState.line.setAttribute('x2', pos.x);
+      wireState.line.setAttribute('y2', pos.y);
+    }
+
+    function dropWire(e) {
+      if(!wireState.drawing) return;
+      wireState.drawing = false;
+      
+      const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+      const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+      
+      wireState.line.style.display = 'none';
+      const dropTarget = document.elementFromPoint(clientX, clientY);
+      wireState.line.style.display = 'block';
+
+      if(dropTarget && dropTarget.classList.contains('port-right') && !dropTarget.classList.contains('connected')) {
+        const expectedMatch = wireState.startPort.getAttribute('data-match');
+        const targetId = dropTarget.getAttribute('data-id');
+        
+        if(expectedMatch === targetId) {
+          const targetRect = dropTarget.getBoundingClientRect();
+          const svgRect = wireState.svg.getBoundingClientRect();
+          wireState.line.setAttribute('x2', targetRect.left - svgRect.left + 10);
+          wireState.line.setAttribute('y2', targetRect.top - svgRect.top + 10);
+          
+          wireState.line.setAttribute('stroke', 'var(--green)');
+          dropTarget.style.backgroundColor = 'var(--green)';
+          wireState.startPort.style.backgroundColor = 'var(--green)';
+          
+          dropTarget.classList.add('connected');
+          wireState.startPort.classList.add('connected');
+          document.getElementById('node-'+wireState.startPort.getAttribute('data-id')).classList.add('locked');
+          document.getElementById('node-'+targetId).classList.add('locked');
+
+          sfx('connect');
+          state.m1WiresConnected++;
+          if(state.m1WiresConnected === M1_CASES.length) {
+            state.m1Completed = true;
+            triggerModal("NODO 01 COMPLETADO", "Cables enrutados. Transmisión ética restaurada.", true);
+            setTimeout(() => renderM1(document.getElementById('module-body')), 1500);
+          }
+          wireState.line = null;
+          return;
+        } else {
+          triggerModal("CORTO CIRCUITO", "Ese caso no se resuelve con ese principio.");
+        }
+      }
+      wireState.line.remove();
+      wireState.line = null;
+    }
+
+    /* ==== MÓDULO 02: CALIBRACIÓN ==== */
+    function renderM2(container) {
+      container.innerHTML = `
+        <p>Calibra los 3 interruptores éticos respondiendo correctamente:</p>
+        <div class="case-detail-box ${state.puzzlesSolved[0] ? 'solved-box' : ''}">
+          <h3>1. Inteligencia Colectiva</h3>
+          ${state.puzzlesSolved[0] ? `<p class="success-text">✓ CALIBRADO: Diálogo en red compartido</p>`
+            : `<button class="action-btn secondary" onclick="checkPuzzle(0, false)">Servidores Privados</button>
+               <button class="action-btn secondary" onclick="checkPuzzle(0, true)">Diálogo en red compartido</button>`}
+        </div>
+        <div class="case-detail-box ${state.puzzlesSolved[1] ? 'solved-box' : ''}">
+          <h3>2. Voz Sintética sin Aviso</h3>
+          ${state.puzzlesSolved[1] ? `<p class="success-text">✓ CALIBRADO: Exigir #HechoConIA</p>`
+            : `<button class="action-btn secondary" onclick="checkPuzzle(1, true)">Exigir #HechoConIA</button>
+               <button class="action-btn secondary" onclick="checkPuzzle(1, false)">Ignorar el origen</button>`}
+        </div>
+        <div class="case-detail-box ${state.puzzlesSolved[2] ? 'solved-box' : ''}">
+          <h3>3. Supervisión Híbrida</h3>
+          ${state.puzzlesSolved[2] ? `<p class="success-text">✓ CALIBRADO: Humano asume autoría</p>`
+            : `<button class="action-btn secondary" onclick="checkPuzzle(2, true)">Humano asume autoría</button>
+               <button class="action-btn secondary" onclick="checkPuzzle(2, false)">Delegar ética a la máquina</button>`}
+        </div>
+      `;
+    }
+    function checkPuzzle(idx, isCorrect) {
+      if (!isCorrect) triggerModal("ERROR", "Vulneración ética detectada. Intenta nuevamente.");
+      else {
+        sfx('correct');
+        state.puzzlesSolved[idx] = true; renderM2(document.getElementById('module-body'));
+        if (state.puzzlesSolved.every(v => v) && !state.m2Completed) {
+          state.m2Completed = true; triggerModal("NODO 02", "Calibración Completa.", true);
+        }
+      }
+    }
+
+    /* ==== MÓDULO 03: DESENCRIPTACIÓN HACKER ==== */
+    function renderM3(container) {
+      container.innerHTML = `
+        <p>Los archivos teóricos están corruptos. Responde la pregunta de seguridad para <b>desencriptarlos</b>:</p>
+        <div class="tab-bar" id="m3-tabs"></div>
+        <div id="teoria-content"></div>
+      `;
+      fillTeoriaContent(state.selectedTeoriaTab);
+    }
+    function switchTeoriaTab(idx) { state.selectedTeoriaTab = idx; fillTeoriaContent(idx); }
+    
+    function genGibberish(length) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+      let res = ''; for(let i=0; i<length; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+      return res;
+    }
+
+    function fillTeoriaContent(idx) {
+      const tabsHTML = THEORIES.map((t, i) => `
+        <button class="tab-btn ${i === idx ? 'active' : ''} ${state.theoriesValidated[i] ? 'validated-tab' : ''}" 
+                onclick="switchTeoriaTab(${i})">
+          Tesis 0${i+1} ${state.theoriesValidated[i] ? '✓' : ''}
+        </button>
+      `).join('');
+      document.getElementById('m3-tabs').innerHTML = tabsHTML;
+
+      const t = THEORIES[idx];
+      const isVal = state.theoriesValidated[idx];
+      
+      if(isVal) {
+        document.getElementById('teoria-content').innerHTML = `
+          <div class="case-detail-box solved-box">
+            <h3>${t.title}</h3>
+            <p class="decrypted-text">${t.text}</p>
+          </div>
+          <button class="action-btn" style="background:var(--green); color:#000;" disabled>Desencriptado ✓</button>
+        `;
+      } else {
+        const gibberish = genGibberish(t.text.length);
+        document.getElementById('teoria-content').innerHTML = `
+          <div class="case-detail-box">
+            <h3>${t.title}</h3>
+            <p class="encrypted-text" id="crypt-text-${idx}">${gibberish}</p>
+          </div>
+          <div id="challenge-box-${idx}" style="background:rgba(0,0,0,0.5); padding:15px; border:1px solid var(--yellow);">
+            <p style="color:var(--yellow); font-weight:bold; font-size:0.9rem;">> PREGUNTA DE SEGURIDAD:</p>
+            <p style="margin-bottom:10px;">${t.q}</p>
+            ${t.options.map((o, optIdx) => `
+              <button class="action-btn secondary" onclick="attemptDecrypt(${idx}, ${o.c})">${o.t}</button>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
+    function attemptDecrypt(idx, isCorrect) {
+      if(!isCorrect) {
+        triggerModal("ACCESO DENEGADO", "Respuesta incorrecta. El código fuente mantiene su encriptación.");
+        return;
+      }
+      
+      sfx('correct');
+      document.getElementById(`challenge-box-${idx}`).innerHTML = `<p class="success-text">>> INICIANDO PROTOCOLO DE DESENCRIPTACIÓN...</p>`;
+      const targetEl = document.getElementById(`crypt-text-${idx}`);
+      const realText = THEORIES[idx].text;
+      targetEl.style.color = "var(--green)";
+      
+      let i = 0;
+      const interv = setInterval(() => {
+          i += 3; if (i % 6 === 0) sfx('tick');
+          if(i > realText.length) i = realText.length;
+          targetEl.innerText = realText.substring(0, i) + genGibberish(realText.length - i);
+          
+          if(i === realText.length) {
+              clearInterval(interv);
+              targetEl.classList.remove('encrypted-text');
+              targetEl.classList.add('decrypted-text');
+              
+              state.theoriesValidated[idx] = true;
+              if (state.theoriesValidated.every(v => v) && !state.m3Completed) {
+                state.m3Completed = true;
+                triggerModal("NODO 03 COMPLETADO", "Has restaurado todo el código fuente del manifiesto.", true);
+              }
+              setTimeout(() => fillTeoriaContent(idx), 1000);
+          }
+      }, 40);
+    }
+
+    /* ==== MÓDULO 04: AUDITORÍA DE IMÁGENES (CON NOMBRES Y DESCRIPCIONES VISIBLES) ==== */
+    function renderM4(container) {
+      if(state.m4Completed) {
+        container.innerHTML = `<div class="case-detail-box solved-box"><h3 class="success-text">✓ AUDITORÍA COMPLETADA</h3><p>Has etiquetado correctamente los archivos sintéticos protegiendo la confianza visual de la red.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <p>Analiza visualmente estos 3 archivos interceptados. Haz clic <b>únicamente sobre las imágenes generadas por IA</b> para aplicarles el sello de transparencia.</p>
+        <div style="text-align:center; margin: 15px 0;">
+          <span style="border: 2px dashed var(--cyan); padding: 5px 15px; color: var(--cyan); font-weight:bold; cursor:pointer;">SELLO ACTIVO: #HechoConIA</span>
+        </div>
+        <div class="files-grid">
+          ${M4_FILES.map(f => `
+            <div class="file-card ${state.m4FilesStamped[f.id] ? 'has-stamp' : ''}" onclick="toggleStamp('${f.id}')">
+              <img src="${f.resolved || f.srcs[0]}" data-file="${f.id}" data-idx="0" class="file-img" alt="${f.name}" referrerpolicy="no-referrer" onload="imgOk(this)" onerror="imgError(this)">
+              <div class="file-info">
+                <b>${f.name}</b>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">${f.desc}</p>
+              </div>
+              <div class="stamped-mark">#HechoConIA</div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="action-btn" style="width:100%; margin-top:20px;" onclick="verifyAuditory()">Verificar Auditoría Visual</button>
+      `;
+    }
+
+    function toggleStamp(fileId) { sfx('stamp'); state.m4FilesStamped[fileId] = !state.m4FilesStamped[fileId]; openModule('m4'); }
+
+    function verifyAuditory() {
+      // f1 es real (sin estampa), f2 es IA (estampa), f3 es IA (estampa)
+      if(!state.m4FilesStamped.f1 && state.m4FilesStamped.f2 && state.m4FilesStamped.f3) {
+        state.m4Completed = true;
+        triggerModal("NODO 04 COMPLETADO", "Auditoría perfecta. Los contenidos sintéticos han sido marcados con transparencia.", true);
+        setTimeout(() => openModule('m4'), 1500);
+      } else {
+        triggerModal("ERROR DE AUDITORÍA", "Has etiquetado una foto real con IA o dejaste un deepfake sin estampar. Analiza bien los bordes y texturas.");
+      }
+    }
+
+    /* ==== MÓDULO 05: FIRMA FINAL ==== */
+    function renderM5(container) {
+      container.innerHTML = `
+        <h3 style="color:var(--green)">[ PROTOCOLO DE ESCAPE AUTORIZADO ]</h3>
+        <p>Has superado las 4 pruebas. Ingresa tus datos como humano en el circuito (Human-in-the-loop) para sellar la sesión:</p>
+        <input type="text" id="user-signature" placeholder="Ingresa tu nombre o seudónimo aquí..." />
+        <button class="action-btn" style="background:var(--green); color:#000;" onclick="sealManifest()">Sellar Manifiesto y Escapar</button>
+      `;
+    }
+
+    function sealManifest() {
+      const nameInput = document.getElementById('user-signature').value.trim();
+      if (!nameInput) { triggerModal("ERROR DE FIRMA", "Debes ingresar tu nombre para certificar la autoría humana."); return; }
+      const date = new Date().toLocaleDateString("es-CO");
+      sfx('finale');
+      
+      document.getElementById('module-body').innerHTML = `
+        <div class="stamp-container" style="border-color:var(--green); background: rgba(57,255,20,0.05);">
+          <h2 style="color:var(--green); border:none;">📜 MANIFIESTO ÉTICO SELLADO</h2>
+          <p style="font-size:1.1rem; color:#fff;">"La inteligencia no es individual; se teje en red. Exigimos transparencia #HechoConIA y supervisión humana activa."</p>
+          <hr style="border-color:var(--green); margin:15px 0;">
+          <p style="color:var(--green);"><b>AUTORÍA RESPONSABLE:</b> ${nameInput}</p>
+          <p style="color:var(--green);"><b>CERTIFICACIÓN:</b> Laboratorio Javeriana Cali · ${date}</p>
+          <p style="color:var(--cyan); font-size:0.85rem; margin-top:10px;">#HechoConIA · Transparencia y Cibercultura Verificada</p>
+        </div>
+        <button class="action-btn secondary" onclick="location.reload()">Reiniciar Simulación</button>
+      `;
+    }
+
+    // Arrancar Laboratorio
+    updateProgress();
+  </script>
+</body>
+</html>
